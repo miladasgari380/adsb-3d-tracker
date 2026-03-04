@@ -4,7 +4,7 @@ A modern, high-performance web application built to visualize live ADS-B flight 
 
 This project ingests raw JSON data from local `dump1090` or `tar1090` receivers (such as those used for FlightRadar24 feeders) and leverages **WebGL** to render real 3D aircraft models seamlessly flying over a dark-themed base map.
 
-![ADS-B 3D Tracker Interface](file:///Users/milad/.gemini/antigravity/brain/2f1aecdb-4587-49b3-ab0a-8d8203063ea0/artifacts/screenshot.png) *(Note: Add your own screenshot here!)*
+![ADS-B 3D Tracker Interface](./screenshot.png)
 
 ## Features
 
