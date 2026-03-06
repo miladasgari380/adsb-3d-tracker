@@ -3,10 +3,18 @@ import { useFlightData } from './hooks/useFlightData';
 import { FlightMap } from './components/FlightMap';
 import { Plane, MapPin, Gauge, Settings, ChevronRight, Activity } from 'lucide-react';
 
+const MAP_STYLES = {
+  'Dark Matter': 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  'Positron': 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+  'Voyager': 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json'
+};
+
 function App() {
   const [url, setUrl] = useState<string>('http://192.168.1.133/dump1090/data/aircraft.json');
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [selectedFlightId, setSelectedFlightId] = useState<string | null>(null);
+  const [mapStyle, setMapStyle] = useState<string>(MAP_STYLES['Dark Matter']);
+  const [showMap, setShowMap] = useState<boolean>(true);
 
   // Initial View State (San Francisco Bay Area)
   const [viewState, setViewState] = useState({
@@ -46,6 +54,8 @@ function App() {
         onViewStateChange={({ viewState }) => setViewState(viewState)}
         selectedFlightId={selectedFlightId}
         onSelectFlight={setSelectedFlightId}
+        mapStyle={mapStyle}
+        showMap={showMap}
       />
 
       {/* Top Navigation Bar (Glassmorphism) */}
@@ -92,6 +102,31 @@ function App() {
                 Leave empty or use VITE_USE_MOCK_DATA=true to use mock data for testing.
               </p>
             </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Map Style</label>
+              <select
+                value={mapStyle}
+                onChange={(e) => setMapStyle(e.target.value)}
+                className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
+              >
+                {Object.entries(MAP_STYLES).map(([name, url]) => (
+                  <option key={name} value={url}>{name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer mt-4 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={showMap}
+                  onChange={(e) => setShowMap(e.target.checked)}
+                  className="rounded border-white/10 bg-slate-900/50 text-blue-500 focus:ring-blue-500"
+                />
+                Show Base Map
+              </label>
+            </div>
+
             {error && (
               <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400">
                 Connection Error: {error}

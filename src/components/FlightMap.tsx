@@ -4,7 +4,9 @@ import { PathLayer } from '@deck.gl/layers';
 import { ScenegraphLayer } from '@deck.gl/mesh-layers';
 import { GLTFLoader } from '@loaders.gl/gltf';
 import { LightingEffect, AmbientLight, DirectionalLight } from '@deck.gl/core';
+import { FlyToInterpolator } from '@deck.gl/core';
 import Map from 'react-map-gl/maplibre';
+import { Plus, Minus, Compass, RotateCcw, RotateCw } from 'lucide-react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { ProcessedFlight } from '../hooks/useFlightData';
 
@@ -14,10 +16,9 @@ interface FlightMapProps {
     onViewStateChange: (e: any) => void;
     selectedFlightId: string | null;
     onSelectFlight: (id: string | null) => void;
+    mapStyle: string;
+    showMap: boolean;
 }
-
-// Mapbox dark style (using maplibre as a free alternative)
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
 // GLB Model of an Airplane
 const AIRPLANE_MODEL = '/models/airplane.glb';
@@ -41,7 +42,9 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     viewState,
     onViewStateChange,
     selectedFlightId,
-    onSelectFlight
+    onSelectFlight,
+    mapStyle,
+    showMap
 }) => {
     // Convert altitude to color (Warmer = higher)
     const getAltitudeColor = (alt: number): [number, number, number, number] => {
@@ -100,16 +103,111 @@ export const FlightMap: React.FC<FlightMapProps> = ({
                 layers={layers}
                 viewState={viewState}
                 onViewStateChange={onViewStateChange}
-                controller={true}
+                controller={{
+                    touchRotate: true,
+                    dragRotate: true,
+                    scrollZoom: true,
+                    dragPan: true,
+                    doubleClickZoom: true,
+                    keyboard: true
+                }}
                 getTooltip={({ object }) => object && (object.flight || object.hex)}
                 effects={[lightingEffect]}
             >
                 <Map
                     reuseMaps
-                    mapStyle={MAP_STYLE}
+                    mapStyle={mapStyle}
                     attributionControl={false}
+                    onMove={(e) => onViewStateChange({ viewState: e.viewState })}
+                    style={{
+                        opacity: showMap ? 1 : 0,
+                        transition: 'opacity 300ms',
+                        pointerEvents: showMap ? 'auto' : 'none'
+                    }}
                 />
             </DeckGL>
+
+            {/* Custom DeckGL Navigation Controls */}
+            <div className="absolute bottom-10 right-6 flex flex-col z-20 bg-slate-800/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                <button
+                    className="p-3 hover:bg-white/10 transition-colors border-b border-white/5 disabled:opacity-50"
+                    onClick={() => onViewStateChange({
+                        viewState: {
+                            ...viewState,
+                            zoom: Math.min((viewState.zoom || 9) + 1, 20),
+                            transitionDuration: 300,
+                            transitionInterpolator: new FlyToInterpolator()
+                        }
+                    })}
+                >
+                    <Plus className="w-5 h-5 text-slate-300" />
+                </button>
+                <button
+                    className="p-3 hover:bg-white/10 transition-colors border-b border-white/5 disabled:opacity-50"
+                    onClick={() => onViewStateChange({
+                        viewState: {
+                            ...viewState,
+                            zoom: Math.max((viewState.zoom || 9) - 1, 1),
+                            transitionDuration: 300,
+                            transitionInterpolator: new FlyToInterpolator()
+                        }
+                    })}
+                >
+                    <Minus className="w-5 h-5 text-slate-300" />
+                </button>
+                <button
+                    className="p-3 hover:bg-white/10 transition-colors border-b border-white/5 disabled:opacity-50 tooltip peer group relative"
+                    onClick={() => onViewStateChange({
+                        viewState: {
+                            ...viewState,
+                            bearing: (viewState.bearing || 0) - 45,
+                            transitionDuration: 300,
+                            transitionInterpolator: new FlyToInterpolator()
+                        }
+                    })}
+                >
+                    <RotateCcw className="w-5 h-5 text-slate-300" />
+                    <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-slate-900 border border-white/10 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                        Rotate Left
+                    </div>
+                </button>
+                <button
+                    className="p-3 hover:bg-white/10 transition-colors border-b border-white/5 disabled:opacity-50 tooltip peer group relative"
+                    onClick={() => onViewStateChange({
+                        viewState: {
+                            ...viewState,
+                            bearing: (viewState.bearing || 0) + 45,
+                            transitionDuration: 300,
+                            transitionInterpolator: new FlyToInterpolator()
+                        }
+                    })}
+                >
+                    <RotateCw className="w-5 h-5 text-slate-300" />
+                    <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-slate-900 border border-white/10 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                        Rotate Right
+                    </div>
+                </button>
+                <button
+                    className="p-3 hover:bg-white/10 transition-colors tooltip peer group relative"
+                    onClick={() => onViewStateChange({
+                        viewState: {
+                            ...viewState,
+                            bearing: 0,
+                            pitch: 0,
+                            transitionDuration: 800,
+                            transitionInterpolator: new FlyToInterpolator()
+                        }
+                    })}
+                >
+                    <Compass
+                        className="w-5 h-5 text-slate-300 transition-transform duration-200"
+                        style={{ transform: `rotate(${-viewState.bearing || 0}deg)` }}
+                    />
+                    <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-slate-900 border border-white/10 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                        Reset Bearing & Pitch
+                    </div>
+                </button>
+            </div>
         </div>
     );
 };
