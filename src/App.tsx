@@ -15,6 +15,7 @@ function App() {
   const [selectedFlightId, setSelectedFlightId] = useState<string | null>(null);
   const [mapStyle, setMapStyle] = useState<string>(MAP_STYLES['Dark Matter']);
   const [showMap, setShowMap] = useState<boolean>(true);
+  const [mapColor, setMapColor] = useState<string>('#0f172a'); // slate-900 default
 
   // Initial View State (San Francisco Bay Area)
   const [viewState, setViewState] = useState({
@@ -56,6 +57,7 @@ function App() {
         onSelectFlight={setSelectedFlightId}
         mapStyle={mapStyle}
         showMap={showMap}
+        mapColor={mapColor}
       />
 
       {/* Top Navigation Bar (Glassmorphism) */}
@@ -116,16 +118,33 @@ function App() {
               </select>
             </div>
             <div>
-              <label className="flex items-center gap-2 cursor-pointer mt-4 text-sm text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={showMap}
-                  onChange={(e) => setShowMap(e.target.checked)}
-                  className="rounded border-white/10 bg-slate-900/50 text-blue-500 focus:ring-blue-500"
-                />
-                Show Base Map
+              <label className="flex items-center justify-between cursor-pointer mt-4 text-sm text-slate-300">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={showMap}
+                    onChange={(e) => setShowMap(e.target.checked)}
+                    className="rounded border-white/10 bg-slate-900/50 text-blue-500 focus:ring-blue-500"
+                  />
+                  Show Base Map
+                </div>
               </label>
             </div>
+
+            {!showMap && (
+              <div className="pt-2 border-t border-white/10 animate-in fade-in slide-in-from-top-2 duration-300">
+                <label className="block text-xs font-medium text-slate-400 mb-1">Custom Background Color</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={mapColor}
+                    onChange={(e) => setMapColor(e.target.value)}
+                    className="h-8 w-14 rounded cursor-pointer bg-slate-900/50 border border-white/10"
+                  />
+                  <span className="text-sm font-mono text-slate-300">{mapColor.toUpperCase()}</span>
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400">

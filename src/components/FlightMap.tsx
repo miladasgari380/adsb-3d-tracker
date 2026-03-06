@@ -18,6 +18,7 @@ interface FlightMapProps {
     onSelectFlight: (id: string | null) => void;
     mapStyle: string;
     showMap: boolean;
+    mapColor: string;
 }
 
 // GLB Model of an Airplane
@@ -44,7 +45,8 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     selectedFlightId,
     onSelectFlight,
     mapStyle,
-    showMap
+    showMap,
+    mapColor
 }) => {
     // Convert altitude to color (Warmer = higher)
     const getAltitudeColor = (alt: number): [number, number, number, number] => {
@@ -98,7 +100,10 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     }, [flights, selectedFlightId]);
 
     return (
-        <div className="absolute inset-0 w-full h-full bg-slate-900">
+        <div
+            className="absolute inset-0 w-full h-full transition-colors duration-500"
+            style={{ backgroundColor: showMap ? '#0f172a' : mapColor }}
+        >
             <DeckGL
                 layers={layers}
                 viewState={viewState}
@@ -116,14 +121,9 @@ export const FlightMap: React.FC<FlightMapProps> = ({
             >
                 <Map
                     reuseMaps
-                    mapStyle={mapStyle}
+                    mapStyle={showMap ? mapStyle : { version: 8, sources: {}, layers: [] }}
                     attributionControl={false}
                     onMove={(e) => onViewStateChange({ viewState: e.viewState })}
-                    style={{
-                        opacity: showMap ? 1 : 0,
-                        transition: 'opacity 300ms',
-                        pointerEvents: showMap ? 'auto' : 'none'
-                    }}
                 />
             </DeckGL>
 
