@@ -30,6 +30,8 @@ export interface ProcessedFlight extends FlightData {
   aircraftType: string; // The parsed normalized type string
   trajectory: [number, number, number][]; // [lon, lat, alt] path history
   lastUpdated: number;
+  pitch: number;       // Calculated pitch angle in degrees
+  roll: number;        // Calculated roll angle in degrees
 }
 
 
@@ -70,7 +72,9 @@ class MockFlightGenerator {
       track,
       gs,
       trajectory: [[lon, lat, alt]],
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
+      pitch: 0,
+      roll: 0
     });
   }
 
@@ -87,10 +91,21 @@ class MockFlightGenerator {
       f.lon += (distKm * Math.sin(radTrack)) / (111 * Math.cos(f.lat * Math.PI / 180));
 
       // Slowly change altitude
+      const prevAlt = f.alt_baro;
       f.alt_baro += (Math.random() - 0.5) * 100;
 
       // Slowly turn
+      const prevTrack = f.track;
       f.track = (f.track + (Math.random() - 0.5) * 5) % 360;
+
+      // Basic mock pitch/roll calculation
+      const altDiff = f.alt_baro - prevAlt;
+      f.pitch = Math.max(-15, Math.min(15, altDiff * 0.5)); // Climb = nose up
+
+      let trackDiff = f.track - prevTrack;
+      if (trackDiff > 180) trackDiff -= 360;
+      if (trackDiff < -180) trackDiff += 360;
+      f.roll = Math.max(-45, Math.min(45, trackDiff * 5)); // Right turn = positive roll
 
       // Add to trajectory (keep last 50 points)
       f.trajectory.push([f.lon, f.lat, f.alt_baro]);
@@ -196,6 +211,29 @@ export function useFlightData(url: string, pollIntervalMs: number = 2000) {
               : parsedType;
 
             if (existing) {
+              // Calculate Pitch and Roll based on delta
+              let currentPitch = existing.pitch || 0;
+              let currentRoll = existing.roll || 0;
+
+              const dt = (now - existing.lastUpdated) / 1000; // seconds
+              if (dt > 0 && dt < 10) {
+                // Altitude rate of change (feat/sec)
+                const vs = (parsedAlt - (existing.alt_baro || 0)) / dt;
+                // Rough approximation: 1000fpm (16fps) ~= 3 degrees pitch
+                const targetPitch = Math.max(-20, Math.min(20, vs * (3 / 16)));
+                currentPitch = currentPitch * 0.7 + targetPitch * 0.3; // smooth
+
+                // Heading rate of change (deg/sec)
+                let trkDelta = parsedTrack - (existing.track || 0);
+                if (trkDelta > 180) trkDelta -= 360;
+                if (trkDelta < -180) trkDelta += 360;
+
+                const turnRate = trkDelta / dt;
+                // standard rate turn (3 deg/sec) is ~15 deg bank at 150kts
+                const targetRoll = Math.max(-60, Math.min(60, turnRate * 5));
+                currentRoll = currentRoll * 0.7 + targetRoll * 0.3; // smooth
+              }
+
               // Only update trajectory if moved significantly to save memory/processing
               const lastPos = existing.trajectory[existing.trajectory.length - 1];
               const movedEnough = lastPos && (Math.abs(lastPos[0] - newPos[0]) > 0.0001 || Math.abs(lastPos[1] - newPos[1]) > 0.0001);
@@ -213,7 +251,9 @@ export function useFlightData(url: string, pollIntervalMs: number = 2000) {
                 id,
                 aircraftType: finalType,
                 trajectory: newTrajectory,
-                lastUpdated: now
+                lastUpdated: now,
+                pitch: currentPitch,
+                roll: currentRoll
               });
             } else {
               next.set(id, {
@@ -224,7 +264,9 @@ export function useFlightData(url: string, pollIntervalMs: number = 2000) {
                 id,
                 aircraftType: finalType,
                 trajectory: [newPos],
-                lastUpdated: now
+                lastUpdated: now,
+                pitch: 0,
+                roll: 0
               });
             }
           });

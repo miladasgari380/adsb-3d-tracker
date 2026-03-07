@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useFlightData } from './hooks/useFlightData';
 import { FlightMap } from './components/FlightMap';
+import { AttitudeIndicator } from './components/AttitudeIndicator';
 import { Plane, MapPin, Gauge, Settings, ChevronRight, Activity, AtSign } from 'lucide-react';
 import { fetchAircraftDetails } from './services/hexdb';
 import type { HexDbAircraft } from './services/hexdb';
@@ -210,6 +211,17 @@ function App() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
+
+              {/* Attitude Indicator */}
+              <div className="w-full">
+                <AttitudeIndicator
+                  pitch={selectedFlight.pitch || 0}
+                  roll={selectedFlight.roll || 0}
+                  speed={selectedFlight.gs || 0}
+                  altitude={selectedFlight.alt_baro || 0}
+                  heading={selectedFlight.track || 0}
+                />
+              </div>
 
               {/* Enhanced HexDB Display */}
               {isLoadingDetails ? (
