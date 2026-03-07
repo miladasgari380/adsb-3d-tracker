@@ -1,7 +1,22 @@
 {
-  "name": "adsb_tracker",
+  "name": "adsb-3d-tracker",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "A high-performance WebGL application for visualizing live ADS-B flight telemetry in full 3D using React, Deck.gl, and dump1090.",
+  "keywords": [
+    "ads-b",
+    "tracker",
+    "3d",
+    "flightradar24",
+    "dump1090",
+    "tar1090",
+    "piaware",
+    "flight-tracker",
+    "deckgl",
+    "webgl",
+    "react",
+    "maplibre"
+  ],
   "type": "module",
   "scripts": {
     "dev": "node proxy.js & vite",

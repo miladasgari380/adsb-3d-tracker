@@ -1,8 +1,16 @@
-# ADS-B 3D Tracker
+# 🛩️ ADS-B 3D Flight Tracker
 
-A modern, high-performance web application built to visualize live ADS-B flight telemetry in full 3D. 
+![License: GPLv2](https://img.shields.io/badge/License-GPLv2-blue.svg)
+![React](https://img.shields.io/badge/React-19.2.0-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?logo=typescript&logoColor=white)
+![Deck.GL](https://img.shields.io/badge/WebGL-Deck.gl-FF4081?logo=webgl&logoColor=white)
 
-This project ingests raw JSON data from local `dump1090` or `tar1090` receivers (such as those used for FlightRadar24 feeders) and leverages **WebGL** to render real 3D aircraft models seamlessly flying over a dark-themed base map.
+A modern, high-performance web application built to visualize live **ADS-B flight telemetry in full 3D**. 
+
+This open-source project directly ingests raw JSON data from local **`dump1090`** or **`tar1090`** receivers—such as those used for **FlightRadar24**, **PiAware**, and **FlightAware** feeders—and leverages **WebGL** to render highly accurate 3D aircraft models seamlessly traversing a geographic map.
+
+## Why this project?
+Existing ADS-B dashboards like Tar1090 and Virtual Radar Server (VRS) are fantastic tools, but they primarily operate in an outdated 2D top-down view. This tracker bridges the gap by providing a stunning, highly optimized **3D Glassmorphism interface** inspired by modern flight simulators, making it the perfect "Eye Candy" dashboard for your ADS-B receiver stack.
 
 ![ADS-B 3D Tracker Interface](./screenshot.png)
 ![ADS-B 3D Tracker Interface](./screenshot2.png)
