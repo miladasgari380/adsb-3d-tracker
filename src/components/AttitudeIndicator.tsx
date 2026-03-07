@@ -23,10 +23,17 @@ export const AttitudeIndicator: React.FC<AttitudeIndicatorProps> = ({
     const horizonY = clampedPitch * 3;
 
     // For scrolling tapes, map values to Y translation offsets
+    // Base offset is -64px because the 0 index (middle of 7 elements of 40px each) is at 160px from top,
+    // and we want it to align with the 96px center mark (192px / 2 container height). 160 - 96 = 64px.
     const speedDecade = Math.floor(speed / 10) * 10;
-    const altHundred = Math.floor(altitude / 100) * 100;
+    const speedOffset = -64 + (speed % 10) * 4;
 
-    const hdgOffset = -(heading % 360) * 2; // 2px per degree
+    const altHundred = Math.floor(altitude / 100) * 100;
+    const altOffset = -64 + (altitude % 100) * 0.4;
+
+    // Heading strip base offset is 86px because the 0-degree point is 10px inside its 20px div,
+    // and we want it to align under the 96px needle center mark in the 192px wide container.
+    const hdgOffset = 86 - (heading % 360) * 2; // 2px per degree
 
     return (
         <div className="relative w-full aspect-square max-h-64 rounded-xl overflow-hidden bg-slate-800 border-2 border-slate-700 shadow-xl font-mono select-none">
@@ -122,7 +129,7 @@ export const AttitudeIndicator: React.FC<AttitudeIndicatorProps> = ({
                 {/* Moving Tape */}
                 <div
                     className="absolute w-full flex flex-col items-end transition-transform duration-300 ease-linear"
-                    style={{ transform: `translateY(${((speed % 10) * 4)}px)` }}
+                    style={{ transform: `translateY(${speedOffset}px)` }}
                 >
                     {[-30, -20, -10, 0, 10, 20, 30].map((offset) => {
                         const val = speedDecade - offset;
@@ -151,7 +158,7 @@ export const AttitudeIndicator: React.FC<AttitudeIndicatorProps> = ({
                 {/* Moving Tape */}
                 <div
                     className="absolute w-full flex flex-col items-start transition-transform duration-300 ease-linear"
-                    style={{ transform: `translateY(${((altitude % 100) * 0.4)}px)` }}
+                    style={{ transform: `translateY(${altOffset}px)` }}
                 >
                     {[-300, -200, -100, 0, 100, 200, 300].map((offset) => {
                         const val = altHundred - offset;
