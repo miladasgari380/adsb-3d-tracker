@@ -37,6 +37,11 @@ This project ingests raw JSON data from local `dump1090` or `tar1090` receivers 
 ### Prerequisites
 - Node.js (v18+)
 - A local ADS-B receiver producing a `data/aircraft.json` endpoint (e.g. PiAware, FlightRadar24 feeder, or standard dump1090).
+  - *Recommended Hardware:*
+    - [Raspberry Pi](https://amzn.to/4buNZ0r)
+    - [MicroSD Memory](https://amzn.to/40hHgAM)
+    - [ADS-B Antenna](https://amzn.to/4d75FAn)
+  - *Build Guide:* Learn how to easily [build your own receiver here](https://www.flightradar24.com/build-your-own).
 
 ### Installation
 1. Clone the repository and navigate into the `adsb_tracker` directory.
