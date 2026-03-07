@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFlightData } from './hooks/useFlightData';
 import { FlightMap } from './components/FlightMap';
-import { Plane, MapPin, Gauge, Settings, ChevronRight, Activity } from 'lucide-react';
+import { Plane, MapPin, Gauge, Settings, ChevronRight, Activity, AtSign } from 'lucide-react';
+import { fetchAircraftDetails } from './services/hexdb';
+import type { HexDbAircraft } from './services/hexdb';
 
 const MAP_STYLES = {
   'Dark Matter': 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
@@ -16,6 +18,10 @@ function App() {
   const [mapStyle, setMapStyle] = useState<string>(MAP_STYLES['Dark Matter']);
   const [showMap, setShowMap] = useState<boolean>(true);
   const [mapColor, setMapColor] = useState<string>('#0f172a'); // slate-900 default
+
+  // HexDB API State
+  const [hexDetails, setHexDetails] = useState<HexDbAircraft | null>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   // Initial View State (San Francisco Bay Area)
   const [viewState, setViewState] = useState({
@@ -44,6 +50,33 @@ function App() {
       setSelectedFlightId(id);
     }
   };
+
+  // Fetch from HexDB when the selected flight changes
+  useEffect(() => {
+    if (!selectedFlight) {
+      setHexDetails(null);
+      return;
+    }
+
+    let isMounted = true;
+    const fetchEnrichedData = async () => {
+      setIsLoadingDetails(true);
+      // Reset previous states immediately on flight switch
+      setHexDetails(null);
+
+      // Fetch aircraft data by ICAO HEX
+      const aircraftResponse = await fetchAircraftDetails(selectedFlight.hex);
+
+      if (isMounted) {
+        setHexDetails(aircraftResponse);
+        setIsLoadingDetails(false);
+      }
+    };
+
+    fetchEnrichedData();
+
+    return () => { isMounted = false; }
+  }, [selectedFlightId]); // Re-run only when the ID specifically changes
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-slate-900 text-slate-100 font-sans">
@@ -177,6 +210,38 @@ function App() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
+
+              {/* Enhanced HexDB Display */}
+              {isLoadingDetails ? (
+                <div className="bg-slate-900/30 p-4 rounded-xl border border-white/5 animate-pulse flex flex-col gap-3">
+                  <div className="h-4 bg-slate-800 rounded w-1/3"></div>
+                  <div className="h-4 bg-slate-800 rounded w-1/2"></div>
+                </div>
+              ) : hexDetails ? (
+                <div className="bg-gradient-to-br from-slate-900/80 to-slate-800/80 p-4 rounded-xl border border-blue-500/20 shadow-inner">
+                  <div className="flex items-center gap-2 text-blue-400 mb-3 border-b border-white/5 pb-2">
+                    <AtSign className="w-4 h-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Registration Database</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Airline / Owner</div>
+                      <div className="text-sm font-medium text-slate-200">{hexDetails.RegisteredOwners || 'Private'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Registration</div>
+                      <div className="font-mono text-sm text-slate-200">{hexDetails.Registration || 'Unknown'}</div>
+                    </div>
+                    <div className="col-span-2 mt-1">
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Aircraft Type</div>
+                      <div className="text-sm text-slate-200">
+                        {hexDetails.Manufacturer} {hexDetails.Type || hexDetails.ICAOTypeCode}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               {/* Telemetry Grid */}
               <div className="grid grid-cols-2 gap-4">
