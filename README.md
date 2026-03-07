@@ -69,6 +69,17 @@ npm run dev
 3. Click the **Gear Icon** in the top right to configure the URL to match the local IP address of your specific Raspberry Pi receiver. 
 4. *Tip: If you delete the URL text completely, the app will instantly switch over to the built-in Mock Data generator!*
 
+### Finding your Raspberry Pi IP Address
+If you do not know the local IP address of your ADS-B receiver, you can easily discover it using a network scan utility like `nmap`.
+
+1. **Install Nmap:** (macOS via Homebrew: `brew install nmap`)
+2. **Find Your Subnet:** Run `ifconfig` (macOS/Linux) or `ipconfig` (Windows) to find your computer's IP (e.g., `192.168.1.126`). Your subnet to scan is usually the first three blocks ending in `.0/24` (e.g., `192.168.1.0/24`).
+3. **Run the Scan:** Execute a ping scan over the subnet with root privileges to force MAC address resolution:
+   ```bash
+   sudo nmap -sn 192.168.1.0/24
+   ```
+4. **Identify the Pi:** Review the terminal output and look for the manufacturer signature `(Raspberry Pi (Trading))`. The IP address printed directly above that line is your receiver's local IP!
+
 ## Tech Stack
 - **Framework**: React 19 + TypeScript
 - **Build Tool**: Vite
