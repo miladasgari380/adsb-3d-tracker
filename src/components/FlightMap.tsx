@@ -5,7 +5,7 @@ import { ScenegraphLayer } from '@deck.gl/mesh-layers';
 import { GLTFLoader } from '@loaders.gl/gltf';
 import { LightingEffect, AmbientLight, DirectionalLight } from '@deck.gl/core';
 import { FlyToInterpolator } from '@deck.gl/core';
-import Map from 'react-map-gl/maplibre';
+import MapLibreMap from 'react-map-gl/maplibre';
 import { Plus, Minus, Compass, RotateCcw, RotateCw } from 'lucide-react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { ProcessedFlight } from '../hooks/useFlightData';
@@ -21,8 +21,40 @@ interface FlightMapProps {
     mapColor: string;
 }
 
-// GLB Model of an Airplane
-const AIRPLANE_MODEL = '/models/airplane.glb';
+// Known FR24 models from the official repository
+const SUPPORTED_MODELS = new Set([
+    'a318', 'a319', 'a320', 'a321', 'a332', 'a333', 'a343', 'a346', 'a359', 'a380',
+    'an225', 'ask21', 'atr42', 'b736', 'b737', 'b738', 'b739', 'b744', 'b748', 'b752',
+    'b753', 'b762', 'b763', 'b764', 'b772', 'b773', 'b788', 'b789', 'bae146', 'beluga',
+    'citation', 'crj700', 'crj900', 'cs100', 'cs300', 'e170', 'e190', 'heli',
+    'millennium_falcon', 'pa28', 'q400'
+]);
+
+const getModelPath = (type?: string) => {
+    if (!type) return '/models/airplane.glb';
+    const t = type.toLowerCase();
+
+    // Direct match handling with file extension overrides
+    if (SUPPORTED_MODELS.has(t)) {
+        if (t === 'an225' || t === 'millennium_falcon') {
+            return `/models/fr24/${t}.gltf`;
+        }
+        return `/models/fr24/${t}.glb`;
+    }
+
+    // Fallbacks based on partial matches for popular families
+    if (t.startsWith('a32')) return '/models/fr24/a320.glb';
+    if (t.startsWith('b73')) return '/models/fr24/b738.glb';
+    if (t.startsWith('b78')) return '/models/fr24/b789.glb';
+    if (t.startsWith('b77')) return '/models/fr24/b772.glb';
+    if (t.includes('crj')) return '/models/fr24/crj900.glb';
+    if (t.includes('erj') || t.includes('e17')) return '/models/fr24/e170.glb';
+    if (t.includes('e19')) return '/models/fr24/e190.glb';
+    if (t.includes('a33')) return '/models/fr24/a332.glb';
+
+    // Default fallback
+    return '/models/airplane.glb';
+};
 
 // Lighting config for the 3D models
 const ambientLight = new AmbientLight({
@@ -61,43 +93,54 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     };
 
     const layers = useMemo(() => {
-        return [
-            // Draw trails behind the planes
-            new PathLayer({
-                id: 'flight-paths',
-                data: flights,
-                pickable: true,
-                widthScale: 20,
-                widthMinPixels: 2,
-                getPath: d => d.trajectory,
-                getColor: d => {
-                    const color = getAltitudeColor(d.alt_baro || 0);
-                    return d.id === selectedFlightId ? [255, 255, 0, 255] : color;
-                },
-                getWidth: d => d.id === selectedFlightId ? 5 : 2,
-            }),
+        const pathLayer = new PathLayer({
+            id: 'flight-paths',
+            data: flights,
+            pickable: true,
+            widthScale: 20,
+            widthMinPixels: 2,
+            getPath: d => d.trajectory,
+            getColor: d => {
+                const color = getAltitudeColor(d.alt_baro || 0);
+                return d.id === selectedFlightId ? [255, 255, 0, 255] : color;
+            },
+            getWidth: d => d.id === selectedFlightId ? 5 : 2,
+        });
 
-            // Draw the 3D plane models
-            new ScenegraphLayer({
-                id: 'flight-models',
-                data: flights,
+        // DeckGL ScenegraphLayers only support a single model URL per layer instance.
+        // Group the flights by their resolved 3D model URL so we can render one layer per model type.
+        const modelGroups = new Map<string, ProcessedFlight[]>();
+        flights.forEach(f => {
+            const modelUrl = getModelPath(f.aircraftType);
+            if (!modelGroups.has(modelUrl)) modelGroups.set(modelUrl, []);
+            modelGroups.get(modelUrl)!.push(f);
+        });
+
+        // Map each group to its own ScenegraphLayer
+        const planeLayers: any[] = Array.from(modelGroups.entries()).map((entry, idx) => {
+            const [modelUrl, groupedFlights] = entry as [string, ProcessedFlight[]];
+            return new ScenegraphLayer({
+                id: `flight-models-${idx}`,
+                data: groupedFlights as any,
                 pickable: true,
-                scenegraph: AIRPLANE_MODEL,
+                scenegraph: modelUrl,
                 _lighting: 'pbr', // Use Physcially Based Rendering for the 3D model
                 loaders: [GLTFLoader],
                 sizeScale: Math.pow(2, 15 - (viewState.zoom || 9)),
-                getPosition: d => [d.lon || 0, d.lat || 0, d.alt_baro || 0],
-                getOrientation: d => [0, -d.track || 0, 90], // [pitch, yaw, roll] adjusting for true north
-                getColor: d => {
+                getPosition: (d: any) => [d.lon || 0, d.lat || 0, d.alt_baro || 0],
+                getOrientation: (d: any) => [0, -d.track || 0, 90], // [pitch, yaw, roll] adjusting for true north
+                getColor: (d: any) => {
                     if (d.id === selectedFlightId) return [255, 255, 0, 255]; // Yellow if selected
                     return getAltitudeColor(d.alt_baro || 0); // Color by alt
                 },
-                onClick: ({ object }) => {
+                onClick: ({ object }: any) => {
                     if (object) onSelectFlight(object.id);
                 }
-            })
-        ];
-    }, [flights, selectedFlightId]);
+            });
+        });
+
+        return [pathLayer, ...planeLayers];
+    }, [flights, selectedFlightId, viewState.zoom]);
 
     return (
         <div
@@ -119,7 +162,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
                 getTooltip={({ object }) => object && (object.flight || object.hex)}
                 effects={[lightingEffect]}
             >
-                <Map
+                <MapLibreMap
                     reuseMaps
                     mapStyle={showMap ? mapStyle : { version: 8, sources: {}, layers: [] }}
                     attributionControl={false}

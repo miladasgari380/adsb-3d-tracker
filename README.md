@@ -64,3 +64,9 @@ npm run dev
 - **3D Engine**: Deck.gl & loaders.gl
 - **Base Maps**: MapLibre GL JS
 - **Proxy Server**: Express.js
+
+## Credits & Licensing
+
+- **3D Aircraft Models**: The incredibly detailed 3D `.glb` and `.gltf` aircraft models used in this visualization are sourced from the official [Flightradar24 3D Models Repository](https://github.com/Flightradar24/fr24-3d-models). 
+  - These models are licensed under the **GNU General Public License v2.0 (GPLv2)**. 
+  - A copy of this license can be found at their repository or within the free software foundation documentation.

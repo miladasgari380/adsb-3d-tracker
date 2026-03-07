@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { fetchAircraftDetails } from '../services/hexdb';
 
 // ADS-B JSON format structure from dump1090/tar1090
 export interface FlightData {
@@ -14,6 +15,8 @@ export interface FlightData {
   seen?: number;       // Time since last update (seconds)
   altitude?: number | string; // Older dump1090 altitude
   speed?: number;      // Older dump1090 speed
+  t?: string;          // Aircraft ICAO type code
+  type?: string;       // Aircraft ICAO type code (Alternative)
 }
 
 export interface AdsbResponse {
@@ -24,6 +27,7 @@ export interface AdsbResponse {
 
 export interface ProcessedFlight extends FlightData {
   id: string;          // Unique ID
+  aircraftType: string; // The parsed normalized type string
   trajectory: [number, number, number][]; // [lon, lat, alt] path history
   lastUpdated: number;
 }
@@ -51,10 +55,15 @@ class MockFlightGenerator {
     const gs = 200 + Math.random() * 300;
     const hex = Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
 
+    // Pick a random known model type for mock mode
+    const knownModels = ['a320', 'b738', 'b772', 'a380', 'heli', 'e190', 'q400', 'citation'];
+    const randomType = knownModels[Math.floor(Math.random() * knownModels.length)];
+
     this.flights.push({
       id: hex,
       hex,
       flight: `FLT${Math.floor(Math.random() * 999)}`,
+      aircraftType: randomType,
       lat,
       lon,
       alt_baro: alt,
@@ -107,6 +116,8 @@ export function useFlightData(url: string, pollIntervalMs: number = 2000) {
   const [flights, setFlights] = useState<Map<string, ProcessedFlight>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const generatorRef = useRef<MockFlightGenerator | null>(null);
+  // Cache to store Hex -> ICAOTypeCode so we don't spam the API
+  const hexTypeCache = useRef<Map<string, string | 'fetching'>>(new Map());
 
   useEffect(() => {
     const shouldUseMock = import.meta.env.VITE_USE_MOCK_DATA === 'true' || !url;
@@ -160,8 +171,29 @@ export function useFlightData(url: string, pollIntervalMs: number = 2000) {
             const parsedAlt = ac.alt_baro ?? (typeof ac.altitude === 'number' ? ac.altitude : 0) ?? ac.alt_geom ?? 0;
             const parsedGs = ac.gs ?? ac.speed ?? 0;
             const parsedTrack = ac.track ?? 0;
+            const parsedType = (ac.t || ac.type || 'unknown').toLowerCase().trim();
 
             const newPos: [number, number, number] = [ac.lon, ac.lat, parsedAlt];
+
+            // Lazy load the exact model type from HexDB if we haven't yet
+            if (!hexTypeCache.current.has(id)) {
+              hexTypeCache.current.set(id, 'fetching');
+              fetchAircraftDetails(id).then(details => {
+                if (details && details.ICAOTypeCode) {
+                  // Save the type and force a re-render of this specific flight on the next poll
+                  hexTypeCache.current.set(id, details.ICAOTypeCode);
+                } else {
+                  hexTypeCache.current.set(id, 'unknown');
+                }
+              }).catch(() => {
+                hexTypeCache.current.set(id, 'unknown');
+              });
+            }
+
+            const cachedType = hexTypeCache.current.get(id);
+            const finalType = (cachedType && cachedType !== 'fetching' && cachedType !== 'unknown')
+              ? cachedType.toLowerCase()
+              : parsedType;
 
             if (existing) {
               // Only update trajectory if moved significantly to save memory/processing
@@ -179,6 +211,7 @@ export function useFlightData(url: string, pollIntervalMs: number = 2000) {
                 gs: parsedGs,
                 track: parsedTrack,
                 id,
+                aircraftType: finalType,
                 trajectory: newTrajectory,
                 lastUpdated: now
               });
@@ -189,6 +222,7 @@ export function useFlightData(url: string, pollIntervalMs: number = 2000) {
                 gs: parsedGs,
                 track: parsedTrack,
                 id,
+                aircraftType: finalType,
                 trajectory: [newPos],
                 lastUpdated: now
               });
