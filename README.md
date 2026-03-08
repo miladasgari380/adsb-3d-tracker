@@ -27,6 +27,58 @@ Existing ADS-B dashboards like Tar1090 and Virtual Radar Server (VRS) are fantas
 
 ## Module Architecture
 
+```mermaid
+graph TD
+    %% External Hardware Layer
+    subgraph "Hardware (Local Network)"
+        Antenna["1090MHz Antenna"] --> |RF Signal| SDR["RTL-SDR USB Dongle"]
+        SDR --> |Raw IQ Data| Pi["Raspberry Pi / Receiver"]
+        Pi --> |Decodes| dump1090["dump1090 / tar1090"]
+        dump1090 -.-> |Generates| json[("aircraft.json")]
+    end
+
+    %% Backend Proxy Layer
+    subgraph "Local API Proxy (Node.js)"
+        Proxy["Express.js Proxy server (proxy.js)"]
+        Proxy -- "Bypasses CORS via -x-adsb-target" --> json
+    end
+
+    %% Frontend App Layer
+    subgraph "Frontend Application (React/Vite)"
+        App["App.tsx (State & Sidebar UI)"]
+        
+        %% API Integration
+        HexDb[("HexDB Public API")]
+        HexAPI["services/hexdb.ts"] --> |"Fetch Aircraft Type/Reg"| HexDb
+        useFlightData["hooks/useFlightData.ts"]
+        
+        %% Render Engine
+        FlightMap["FlightMap.tsx (Deck.gl Engine)"]
+        Attitude["AttitudeIndicator.tsx"]
+        
+        App --> |"Selected Hex ID"| HexAPI
+        App --> useFlightData
+        App --> FlightMap
+        App --> Attitude
+        
+        useFlightData --> |"Polls Telemetry (500ms)"| Proxy
+        useFlightData -- "Calculates Delta (Pitch/Roll/Track)" --> State[("Flight Data Cache (Map)")]
+        State --> FlightMap
+        State --> Attitude
+    end
+
+    %% WebGL Render Layer
+    subgraph "WebGL Rendering Pipeline"
+        BaseMap["MapLibre (Base Vector Map)"]
+        Scenegraph["Deck.gl ScenegraphLayer (3D .glb Models)"]
+        Path["Deck.gl PathLayer (Trailing heatmaps)"]
+        
+        FlightMap --> BaseMap
+        FlightMap --> Scenegraph
+        FlightMap --> Path
+    end
+```
+
 ### Frontend (`/src`)
 - **`App.tsx`**: The main application shell. Handles React State for the selected camera views, the configuration modal, and the flight details sidebar.
 - **`components/FlightMap.tsx`**: The core WebGL engine. Uses `react-map-gl` to render a MapLibre base layer, and overlays `deck.gl` layers (`PathLayer` for trails, `ScenegraphLayer` for 3D GLB planes). Applies real-time dynamic lighting.
